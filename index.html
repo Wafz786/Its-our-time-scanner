@@ -139,18 +139,50 @@ const clearPinButton =
   LOAD SAVED PIN
 */
 
-window.addEventListener("load", function() {
+window.addEventListener(
+  "load",
+  function() {
 
-  const savedPin =
-    localStorage.getItem("scannerPin");
+    const urlParams =
+      new URLSearchParams(
+        window.location.search
+      );
 
-  if (savedPin) {
+    const urlPin =
+      urlParams.get("pin");
 
-    pinInput.value = savedPin;
 
-    statusBox.innerText =
-      "PIN remembered. Tap START SCANNER.";
+    if (urlPin) {
 
+      localStorage.setItem(
+        "scannerPin",
+        urlPin
+      );
+
+      pinInput.value =
+        urlPin;
+
+    }
+
+
+    const savedPin =
+      localStorage.getItem(
+        "scannerPin"
+      );
+
+
+    if (savedPin) {
+
+      pinInput.value =
+        savedPin;
+
+      statusBox.innerText =
+        "PIN remembered. Starting scanner...";
+
+    }
+
+  }
+);
   }
 
 });
