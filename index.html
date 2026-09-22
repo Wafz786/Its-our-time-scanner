@@ -57,10 +57,6 @@
       margin: 5px;
     }
 
-    button:disabled {
-      opacity: 0.5;
-    }
-
     #reader {
       width: 100%;
       margin-top: 20px;
@@ -70,10 +66,6 @@
       font-size: 18px;
       margin: 20px 0;
       line-height: 1.5;
-    }
-
-    .hidden {
-      display: none;
     }
   </style>
 </head>
@@ -102,7 +94,7 @@
     START SCANNER
   </button>
 
-  <button id="clearPinButton" type="button">
+  <button id="clearButton" type="button">
     CLEAR PIN
   </button>
 
@@ -117,132 +109,132 @@
 <script>
 
 const WEB_APP_URL =
-"https://script.google.com/macros/s/AKfycbxjwrPL4Z9qEw0Lq9uJU53OrBInh5pZ_hog4ABj271r9b5HcCc-N04_snMXeipfQC0j/exec";
+  "https://script.google.com/macros/s/AKfycbxjwrPL4Z9qEw0Lq9uJU53OrBInh5pZ_hog4ABj271r9b5HcCc-N04_snMXeipfQC0j/exec";
 
 let scanner = null;
+let pin = "";
 let processing = false;
+
 
 const pinInput =
   document.getElementById("pin");
 
-const statusBox =
-  document.getElementById("status");
-
 const startButton =
   document.getElementById("startButton");
 
-const clearPinButton =
-  document.getElementById("clearPinButton");
+const clearButton =
+  document.getElementById("clearButton");
+
+const statusBox =
+  document.getElementById("status");
 
 
 /*
-  LOAD SAVED PIN
+========================================
+LOAD PIN
+========================================
 */
 
-window.addEventListener(
-  "load",
-  function() {
+function loadPin() {
 
-    const urlParams =
-      new URLSearchParams(
-        window.location.search
-      );
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
 
-    const urlPin =
-      urlParams.get("pin");
+  const urlPin =
+    params.get("pin");
 
+  if (urlPin) {
 
-    if (urlPin) {
+    pin = urlPin;
 
-      localStorage.setItem(
-        "scannerPin",
-        urlPin
-      );
+    localStorage.setItem(
+      "scannerPin",
+      pin
+    );
 
-      pinInput.value =
-        urlPin;
+    pinInput.value = pin;
 
-    }
+    statusBox.innerText =
+      "PIN loaded. Tap START SCANNER.";
 
-
-    const savedPin =
-      localStorage.getItem(
-        "scannerPin"
-      );
-
-
-    if (savedPin) {
-
-      pinInput.value =
-        savedPin;
-
-      statusBox.innerText =
-        "PIN remembered. Starting scanner...";
-
-    }
-
-  }
-);
+    return;
   }
 
-});
+
+  const savedPin =
+    localStorage.getItem(
+      "scannerPin"
+    );
+
+  if (savedPin) {
+
+    pin = savedPin;
+
+    pinInput.value = savedPin;
+
+    statusBox.innerText =
+      "PIN remembered. Tap START SCANNER.";
+
+  }
+
+}
 
 
 /*
-  CLEAR SAVED PIN
+========================================
+CLEAR PIN
+========================================
 */
 
-clearPinButton.addEventListener("click", function() {
+clearButton.onclick = function() {
 
-  localStorage.removeItem("scannerPin");
+  localStorage.removeItem(
+    "scannerPin"
+  );
+
+  pin = "";
 
   pinInput.value = "";
 
   statusBox.innerText =
-    "PIN cleared. Enter your scanner PIN.";
+    "PIN cleared. Enter your PIN.";
 
-});
+};
 
 
 /*
-  START SCANNER
+========================================
+START SCANNER
+========================================
 */
 
-startButton.addEventListener("click", startScanner);
+startButton.onclick = async function() {
 
-
-async function startScanner() {
-
-  if (processing) return;
-
-  let pin =
+  pin =
     pinInput.value.trim();
 
-  /*
-    If the box is empty, use the
-    saved PIN from the phone.
-  */
 
   if (!pin) {
 
     pin =
-      localStorage.getItem("scannerPin") || "";
+      localStorage.getItem(
+        "scannerPin"
+      ) || "";
 
   }
+
 
   if (!pin) {
 
     statusBox.innerText =
-      "Please enter the scanner PIN.";
+      "Please enter your scanner PIN.";
 
     return;
 
   }
 
-
-  /*
-    SAVE PIN FOR FUTURE SCANS
-  */
 
   localStorage.setItem(
     "scannerPin",
@@ -250,27 +242,27 @@ async function startScanner() {
   );
 
 
-  /*
-    SHOW CAMERA MESSAGE
-  */
+  startButton.disabled =
+    true;
+
 
   statusBox.innerText =
     "Opening camera...";
 
 
-  /*
-    CREATE QR SCANNER
-  */
-
-  scanner =
-    new Html5Qrcode("reader");
-
-
   try {
+
+    scanner =
+      new Html5Qrcode(
+        "reader"
+      );
+
 
     await scanner.start(
 
-      { facingMode: "environment" },
+      {
+        facingMode: "environment"
+      },
 
       {
         fps: 10,
@@ -280,9 +272,12 @@ async function startScanner() {
         }
       },
 
+
       async function(decodedText) {
 
-        if (processing) return;
+        if (processing) {
+          return;
+        }
 
         processing = true;
 
@@ -290,26 +285,15 @@ async function startScanner() {
           "Checking ticket...";
 
 
-        /*
-          STOP CAMERA
-        */
-
         try {
-
           await scanner.stop();
-
-        } catch (error) {
-
-          console.log(error);
-
+        } catch (e) {
+          console.log(e);
         }
 
 
-        /*
-          GET TICKET ID FROM QR
-        */
-
         let ticketId = "";
+
 
         try {
 
@@ -317,19 +301,17 @@ async function startScanner() {
             new URL(decodedText);
 
           ticketId =
-            url.searchParams.get("ticket") || "";
+            url.searchParams.get(
+              "ticket"
+            ) || "";
 
-        } catch (error) {
+        } catch (e) {
 
           ticketId =
             decodedText.trim();
 
         }
 
-
-        /*
-          INVALID QR
-        */
 
         if (!ticketId) {
 
@@ -338,14 +320,13 @@ async function startScanner() {
 
           processing = false;
 
+          startButton.disabled =
+            false;
+
           return;
 
         }
 
-
-        /*
-          SEND TICKET + PIN TO BACKEND
-        */
 
         const resultUrl =
           WEB_APP_URL +
@@ -354,10 +335,6 @@ async function startScanner() {
           "&ticket=" +
           encodeURIComponent(ticketId);
 
-
-        /*
-          OPEN VERIFICATION RESULT
-        */
 
         window.location.href =
           resultUrl;
@@ -378,11 +355,21 @@ async function startScanner() {
     statusBox.innerText =
       "CAMERA ERROR — Please allow camera access.";
 
-    processing = false;
+    startButton.disabled =
+      false;
 
   }
 
-}
+};
+
+
+/*
+========================================
+START
+========================================
+*/
+
+loadPin();
 
 </script>
 
