@@ -20,10 +20,29 @@
       margin: auto;
       padding: 25px;
       border-radius: 15px;
+      box-shadow: 0 3px 15px rgba(0,0,0,.08);
     }
 
     h1 {
       font-size: 28px;
+      margin-bottom: 5px;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      margin-bottom: 25px;
+    }
+
+    input {
+      width: 90%;
+      max-width: 300px;
+      padding: 14px;
+      font-size: 20px;
+      text-align: center;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      box-sizing: border-box;
     }
 
     #reader {
@@ -42,6 +61,12 @@
       border: none;
       border-radius: 8px;
       cursor: pointer;
+      background: #222;
+      color: white;
+    }
+
+    button:disabled {
+      opacity: 0.5;
     }
   </style>
 </head>
@@ -52,14 +77,26 @@
 
   <h1>IT'S OUR TIME</h1>
 
-  <p><strong>PRIVATE TICKET SCANNER</strong></p>
+  <p class="subtitle">
+    <strong>PRIVATE TICKET SCANNER</strong>
+  </p>
+
+  <input
+    type="password"
+    id="pin"
+    placeholder="Enter scanner PIN"
+    inputmode="numeric"
+    autocomplete="off"
+  >
+
+  <br>
 
   <button onclick="startScanner()">
     START SCANNER
   </button>
 
   <div id="status">
-    Scanner ready.
+    Enter your PIN to start.
   </div>
 
   <div id="reader"></div>
@@ -71,14 +108,24 @@
 const WEB_APP_URL =
 "https://script.google.com/macros/s/AKfycbxjwrPL4Z9qEw0Lq9uJU53OrBInh5pZ_hog4ABj271r9b5HcCc-N04_snMXeipfQC0j/exec";
 
-const SCANNER_PIN = "847219";
-
 let scanner = null;
 let processing = false;
+
 
 function startScanner() {
 
   if (processing) return;
+
+  const pin =
+    document.getElementById("pin").value.trim();
+
+  if (!pin) {
+
+    document.getElementById("status").innerHTML =
+      "Please enter the scanner PIN.";
+
+    return;
+  }
 
   document.getElementById("status").innerHTML =
     "Opening camera...";
@@ -137,7 +184,7 @@ function startScanner() {
       const resultUrl =
         WEB_APP_URL +
         "?pin=" +
-        encodeURIComponent(SCANNER_PIN) +
+        encodeURIComponent(pin) +
         "&ticket=" +
         encodeURIComponent(ticketId);
 
