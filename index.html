@@ -25,12 +25,6 @@
 
     h1 {
       font-size: 28px;
-      margin-bottom: 5px;
-    }
-
-    .subtitle {
-      font-size: 16px;
-      margin-bottom: 25px;
     }
 
     input {
@@ -45,28 +39,24 @@
       box-sizing: border-box;
     }
 
+    button {
+      padding: 15px 25px;
+      font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      background: #222;
+      color: white;
+      cursor: pointer;
+    }
+
     #reader {
       width: 100%;
       margin-top: 20px;
     }
 
     #status {
-      font-size: 20px;
-      margin: 20px 0;
-    }
-
-    button {
-      padding: 15px 25px;
       font-size: 18px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      background: #222;
-      color: white;
-    }
-
-    button:disabled {
-      opacity: 0.5;
+      margin: 20px 0;
     }
   </style>
 </head>
@@ -77,21 +67,18 @@
 
   <h1>IT'S OUR TIME</h1>
 
-  <p class="subtitle">
-    <strong>PRIVATE TICKET SCANNER</strong>
-  </p>
+  <p><strong>PRIVATE TICKET SCANNER</strong></p>
 
   <input
     type="password"
     id="pin"
     placeholder="Enter scanner PIN"
     inputmode="numeric"
-    autocomplete="off"
   >
 
   <br>
 
-  <button onclick="startScanner()">
+  <button id="startButton" type="button">
     START SCANNER
   </button>
 
@@ -111,29 +98,30 @@ const WEB_APP_URL =
 let scanner = null;
 let processing = false;
 
+document.getElementById("startButton").addEventListener("click", startScanner);
 
 function startScanner() {
 
   if (processing) return;
 
-  let pin =
+  const pin =
     document.getElementById("pin").value.trim();
 
   if (!pin) {
-    pin = sessionStorage.getItem("scannerPin") || "";
-  }
 
-  if (!pin) {
-
-    document.getElementById("status").innerHTML =
+    document.getElementById("status").innerText =
       "Please enter the scanner PIN.";
 
     return;
   }
 
-  sessionStorage.setItem("scannerPin", pin);
-    { facingMode: "environment" },
+  document.getElementById("status").innerText =
+    "Opening camera...";
 
+  scanner = new Html5Qrcode("reader");
+
+  scanner.start(
+    { facingMode: "environment" },
     {
       fps: 10,
       qrbox: {
@@ -150,7 +138,7 @@ function startScanner() {
 
       scanner.stop();
 
-      document.getElementById("status").innerHTML =
+      document.getElementById("status").innerText =
         "Checking ticket...";
 
       let ticketId = "";
@@ -164,14 +152,13 @@ function startScanner() {
 
       } catch (error) {
 
-        ticketId =
-          decodedText.trim();
+        ticketId = decodedText.trim();
 
       }
 
       if (!ticketId) {
 
-        document.getElementById("status").innerHTML =
+        document.getElementById("status").innerText =
           "INVALID QR CODE";
 
         processing = false;
@@ -186,16 +173,18 @@ function startScanner() {
         "&ticket=" +
         encodeURIComponent(ticketId);
 
-     window.open(resultUrl, "_blank");
+      window.location.href = resultUrl;
 
     }
 
   ).catch(function(error) {
 
-    document.getElementById("status").innerHTML =
-      "CAMERA ERROR: Please allow camera access.";
+    console.error(error);
 
-    console.log(error);
+    document.getElementById("status").innerText =
+      "CAMERA ERROR — Please allow camera access.";
+
+    processing = false;
 
   });
 
