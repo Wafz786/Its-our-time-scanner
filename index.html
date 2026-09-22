@@ -104,13 +104,20 @@ function startScanner() {
 
   if (processing) return;
 
-  const pin =
+ let pin =
     document.getElementById("pin").value.trim();
 
-  if (!pin) {
+if (!pin) {
+  pin = localStorage.getItem("scannerPin") || "";
+}
 
-    document.getElementById("status").innerText =
-      "Please enter the scanner PIN.";
+if (!pin) {
+  document.getElementById("status").innerText =
+    "Please enter the scanner PIN.";
+  return;
+}
+
+localStorage.setItem("scannerPin", pin);
 
     return;
   }
