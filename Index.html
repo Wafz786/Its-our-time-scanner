@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IT'S OUR TIME - Scanner</title>
+
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .box {
+      background: white;
+      max-width: 500px;
+      margin: auto;
+      padding: 25px;
+      border-radius: 15px;
+    }
+
+    h1 {
+      font-size: 28px;
+    }
+
+    #reader {
+      width: 100%;
+      margin-top: 20px;
+    }
+
+    #status {
+      font-size: 20px;
+      margin: 20px 0;
+    }
+
+    button {
+      padding: 15px 25px;
+      font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="box">
+
+  <h1>IT'S OUR TIME</h1>
+
+  <p><strong>PRIVATE TICKET SCANNER</strong></p>
+
+  <button onclick="startScanner()">
+    START SCANNER
+  </button>
+
+  <div id="status">
+    Scanner ready.
+  </div>
+
+  <div id="reader"></div>
+
+</div>
+
+<script>
+
+const WEB_APP_URL =
+"https://script.google.com/macros/s/AKfycbxjwrPL4Z9qEw0Lq9uJU53OrBInh5pZ_hog4ABj271r9b5HcCc-N04_snMXeipfQC0j/exec";
+
+const SCANNER_PIN = "847219";
+
+let scanner = null;
+let processing = false;
+
+function startScanner() {
+
+  if (processing) return;
+
+  document.getElementById("status").innerHTML =
+    "Opening camera...";
+
+  scanner = new Html5Qrcode("reader");
+
+  scanner.start(
+
+    { facingMode: "environment" },
+
+    {
+      fps: 10,
+      qrbox: {
+        width: 250,
+        height: 250
+      }
+    },
+
+    function(decodedText) {
+
+      if (processing) return;
+
+      processing = true;
+
+      scanner.stop();
+
+      document.getElementById("status").innerHTML =
+        "Checking ticket...";
+
+      let ticketId = "";
+
+      try {
+
+        const url = new URL(decodedText);
+
+        ticketId =
+          url.searchParams.get("ticket") || "";
+
+      } catch (error) {
+
+        ticketId =
+          decodedText.trim();
+
+      }
+
+      if (!ticketId) {
+
+        document.getElementById("status").innerHTML =
+          "INVALID QR CODE";
+
+        processing = false;
+
+        return;
+      }
+
+      const resultUrl =
+        WEB_APP_URL +
+        "?pin=" +
+        encodeURIComponent(SCANNER_PIN) +
+        "&ticket=" +
+        encodeURIComponent(ticketId);
+
+      window.location.href = resultUrl;
+
+    }
+
+  ).catch(function(error) {
+
+    document.getElementById("status").innerHTML =
+      "CAMERA ERROR: Please allow camera access.";
+
+    console.log(error);
+
+  });
+
+}
+
+</script>
+
+</body>
+</html>
