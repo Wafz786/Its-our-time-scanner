@@ -12,6 +12,7 @@
       background: #f5f5f5;
       text-align: center;
       padding: 20px;
+      margin: 0;
     }
 
     .box {
@@ -25,6 +26,12 @@
 
     h1 {
       font-size: 28px;
+      margin-bottom: 5px;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      margin-bottom: 25px;
     }
 
     input {
@@ -47,6 +54,11 @@
       background: #222;
       color: white;
       cursor: pointer;
+      margin: 5px;
+    }
+
+    button:disabled {
+      opacity: 0.5;
     }
 
     #reader {
@@ -57,6 +69,11 @@
     #status {
       font-size: 18px;
       margin: 20px 0;
+      line-height: 1.5;
+    }
+
+    .hidden {
+      display: none;
     }
   </style>
 </head>
@@ -67,19 +84,26 @@
 
   <h1>IT'S OUR TIME</h1>
 
-  <p><strong>PRIVATE TICKET SCANNER</strong></p>
+  <p class="subtitle">
+    <strong>PRIVATE TICKET SCANNER</strong>
+  </p>
 
   <input
     type="password"
     id="pin"
     placeholder="Enter scanner PIN"
     inputmode="numeric"
+    autocomplete="off"
   >
 
   <br>
 
   <button id="startButton" type="button">
     START SCANNER
+  </button>
+
+  <button id="clearPinButton" type="button">
+    CLEAR PIN
   </button>
 
   <div id="status">
@@ -98,102 +122,233 @@ const WEB_APP_URL =
 let scanner = null;
 let processing = false;
 
-document.getElementById("startButton").addEventListener("click", startScanner);
+const pinInput =
+  document.getElementById("pin");
 
-function startScanner() {
+const statusBox =
+  document.getElementById("status");
+
+const startButton =
+  document.getElementById("startButton");
+
+const clearPinButton =
+  document.getElementById("clearPinButton");
+
+
+/*
+  LOAD SAVED PIN
+*/
+
+window.addEventListener("load", function() {
+
+  const savedPin =
+    localStorage.getItem("scannerPin");
+
+  if (savedPin) {
+
+    pinInput.value = savedPin;
+
+    statusBox.innerText =
+      "PIN remembered. Tap START SCANNER.";
+
+  }
+
+});
+
+
+/*
+  CLEAR SAVED PIN
+*/
+
+clearPinButton.addEventListener("click", function() {
+
+  localStorage.removeItem("scannerPin");
+
+  pinInput.value = "";
+
+  statusBox.innerText =
+    "PIN cleared. Enter your scanner PIN.";
+
+});
+
+
+/*
+  START SCANNER
+*/
+
+startButton.addEventListener("click", startScanner);
+
+
+async function startScanner() {
 
   if (processing) return;
 
- let pin =
-    document.getElementById("pin").value.trim();
+  let pin =
+    pinInput.value.trim();
 
-if (!pin) {
-  pin = localStorage.getItem("scannerPin") || "";
-}
+  /*
+    If the box is empty, use the
+    saved PIN from the phone.
+  */
 
-if (!pin) {
-  document.getElementById("status").innerText =
-    "Please enter the scanner PIN.";
-  return;
-}
+  if (!pin) {
 
-localStorage.setItem("scannerPin", pin);
+    pin =
+      localStorage.getItem("scannerPin") || "";
 
-    return;
   }
 
-  document.getElementById("status").innerText =
+  if (!pin) {
+
+    statusBox.innerText =
+      "Please enter the scanner PIN.";
+
+    return;
+
+  }
+
+
+  /*
+    SAVE PIN FOR FUTURE SCANS
+  */
+
+  localStorage.setItem(
+    "scannerPin",
+    pin
+  );
+
+
+  /*
+    SHOW CAMERA MESSAGE
+  */
+
+  statusBox.innerText =
     "Opening camera...";
 
-  scanner = new Html5Qrcode("reader");
 
-  scanner.start(
-    { facingMode: "environment" },
-    {
-      fps: 10,
-      qrbox: {
-        width: 250,
-        height: 250
+  /*
+    CREATE QR SCANNER
+  */
+
+  scanner =
+    new Html5Qrcode("reader");
+
+
+  try {
+
+    await scanner.start(
+
+      { facingMode: "environment" },
+
+      {
+        fps: 10,
+        qrbox: {
+          width: 250,
+          height: 250
+        }
+      },
+
+      async function(decodedText) {
+
+        if (processing) return;
+
+        processing = true;
+
+        statusBox.innerText =
+          "Checking ticket...";
+
+
+        /*
+          STOP CAMERA
+        */
+
+        try {
+
+          await scanner.stop();
+
+        } catch (error) {
+
+          console.log(error);
+
+        }
+
+
+        /*
+          GET TICKET ID FROM QR
+        */
+
+        let ticketId = "";
+
+        try {
+
+          const url =
+            new URL(decodedText);
+
+          ticketId =
+            url.searchParams.get("ticket") || "";
+
+        } catch (error) {
+
+          ticketId =
+            decodedText.trim();
+
+        }
+
+
+        /*
+          INVALID QR
+        */
+
+        if (!ticketId) {
+
+          statusBox.innerText =
+            "INVALID QR CODE";
+
+          processing = false;
+
+          return;
+
+        }
+
+
+        /*
+          SEND TICKET + PIN TO BACKEND
+        */
+
+        const resultUrl =
+          WEB_APP_URL +
+          "?pin=" +
+          encodeURIComponent(pin) +
+          "&ticket=" +
+          encodeURIComponent(ticketId);
+
+
+        /*
+          OPEN VERIFICATION RESULT
+        */
+
+        window.location.href =
+          resultUrl;
+
       }
-    },
 
-    function(decodedText) {
+    );
 
-      if (processing) return;
 
-      processing = true;
+    statusBox.innerText =
+      "SCANNER READY — Scan a ticket.";
 
-      scanner.stop();
 
-      document.getElementById("status").innerText =
-        "Checking ticket...";
-
-      let ticketId = "";
-
-      try {
-
-        const url = new URL(decodedText);
-
-        ticketId =
-          url.searchParams.get("ticket") || "";
-
-      } catch (error) {
-
-        ticketId = decodedText.trim();
-
-      }
-
-      if (!ticketId) {
-
-        document.getElementById("status").innerText =
-          "INVALID QR CODE";
-
-        processing = false;
-
-        return;
-      }
-
-      const resultUrl =
-        WEB_APP_URL +
-        "?pin=" +
-        encodeURIComponent(pin) +
-        "&ticket=" +
-        encodeURIComponent(ticketId);
-
-      window.location.href = resultUrl;
-
-    }
-
-  ).catch(function(error) {
+  } catch (error) {
 
     console.error(error);
 
-    document.getElementById("status").innerText =
+    statusBox.innerText =
       "CAMERA ERROR — Please allow camera access.";
 
     processing = false;
 
-  });
+  }
 
 }
 
